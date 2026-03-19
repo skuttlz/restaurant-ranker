@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from dotenv import load_dotenv
 from openai import OpenAI
 
-# Load from ~/.env for local dev; Railway injects env vars directly
+# Load from ~/.env for local dev
 load_dotenv(os.path.expanduser("~/.env"))
 
 
@@ -17,7 +17,24 @@ class RankedRestaurant:
 
 
 def _get_client() -> OpenAI:
-    return OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+    # Try os.environ first (works for local .env and most cloud platforms)
+    api_key = os.environ.get("OPENAI_API_KEY")
+
+    # Fall back to Streamlit secrets (Streamlit Cloud)
+    if not api_key:
+        try:
+            import streamlit as st
+            api_key = st.secrets.get("OPENAI_API_KEY")
+        except Exception:
+            pass
+
+    if not api_key:
+        raise ValueError(
+            "OPENAI_API_KEY not found. Set it in environment variables "
+            "or Streamlit secrets."
+        )
+
+    return OpenAI(api_key=api_key)
 
 
 def extract_restaurants(source_name: str, city: str, cleaned_text: str) -> list[str]:
